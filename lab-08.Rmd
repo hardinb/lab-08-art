@@ -12,29 +12,82 @@ library(tidyverse)
 library(skimr)
 ```
 
-```{r load-data, message = FALSE, eval = FALSE}
+```{r load-data, message = FALSE}
 # Remove eval = FALSE or set it to TRUE once data is ready to be loaded
 uoe_art <- read_csv("data/uoe-art.csv")
 ```
 
 ### Exercise 9
 
+Now that we have made the dataframe for the UoE collection, let's write some code to make separate columns for title and year in our dataframe!
+
 ```{r separate-title-date, error = TRUE}
 uoe_art <- uoe_art %>%
   separate(title, into = c("title", "date"), sep = "\\(") %>%
-  mutate(year = str_remove(date, "\\)") %>% as.numeric()) %>%
-  select(title, artist, year, ___)
+  mutate(newdate = str_remove(date, "\\Circa")) %>%
+  mutate(year = str_remove(newdate, "\\)") %>% as.numeric()) %>%
+  select(title, artist, year, link)
 ```
 
 ### Exercise 10
 
-Remove this text, and add your answer for Exercise 10 here.
-Add code chunks as needed.
-Don't forget to label your code chunk.
-Do not use spaces in code chunk labels.
+We get two errors when we run the code. Both errors happen because R expects to find 2 pieces (the title and the date), and it's either finding more or fewer pieces than that. The first error happens because its finding that some pieces have an additional parenthetical in the title besides the date, and its discarding this additional piece. The second error happens because it's not finding the date in the title for some pieces, and so its filling in "NA" for the year for these pieces.
 
 ### Exercise 11
 
-...
+Now, if we skim through the dataset we made, we can see that 114 art pieces have artist info missing (about 4%). 1284 art pieces have year info missing (about 44%).
 
-Add exercise headings as needed.
+```{r print-data}
+skim(uoe_art)
+```
+
+### Exercise 12
+
+When we try to make a histogram showing the distribution of years for all the art pieces, we see that there is one extreme outlier, a piece that seems to date to about the year 0. Further examination shows that this piece has been given a year of "2" in our dataset.
+
+```{r hist}
+ggplot(uoe_art, aes(x = year))+
+  geom_histogram(binwidth = 1)
+
+#checking this out
+uoe_art %>%
+  arrange(year)
+```
+
+### Exercise 13
+
+So, the problem here is that one piece of art has a parenthetical (2) in its title, which is being saved as the year by our code. This piece is "Masks (2)", and according to its page on the website, it actually dates to 1964. In order to get the correct date applied to this piece, then, we have to do some cleaning.
+
+After correcting this one error, we can see that the dates for pieces in the collection span from the early 1800s to the present, with a majority of the pieces dating to the 1950s and 60s.
+
+```{r fix-year}
+uoe_art <- uoe_art %>%
+  mutate(year = if_else(year == 2, 1964, year))
+
+ggplot(uoe_art, aes(x = year))+
+  geom_histogram(binwidth = 1, color = "black", fill = "grey")+
+  scale_y_continuous(expand = c(0, 0), limits = c(0, 85))+
+  scale_x_continuous(n.breaks = 10)+
+  theme_bw()
+```
+
+### Exercise 14
+
+Let's find out which artist has the most pieces in the UoE collection! Technically, "Unknown" has the most pieces, but if we set that aside, we can see that Emma Gillies has the most pieces in the collection, by quite a large margin. I was not familiar with her beforehand, but according to Prof. Google, she was a Scottish potter who attended the Edinburgh College of Art, and whose work has been exhibited at the UoE several times.
+
+```{r most-artist}
+uoe_art %>%
+  count(artist) %>%
+  arrange(desc(n))
+```
+
+### Exercise 15
+
+Lastly, we can filter our dataset to only show the art pieces that include the word "Child" in the title. There are 11 art pieces in the UoE collection fitting this criteria.
+
+```{r childs}
+uoe_art %>%
+  filter(grepl("Child", title))
+```
+
+
